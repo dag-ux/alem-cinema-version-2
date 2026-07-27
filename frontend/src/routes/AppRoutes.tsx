@@ -1,3 +1,4 @@
+import React from "react";
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from '../pages/Home/Home';
 import Shows from '../pages/Shows/Shows';
@@ -7,8 +8,9 @@ import SeatSelection from '../pages/SeatSelection/SeatSelection';
 import Details from '../pages/Details/Details';
 import BookingConfirmation from '../pages/BookingConfirmation/BookingConfirmation';
 import MyBookings from '../pages/MyBookings/MyBookings';
+import AdminRoutes from './AdminRoutes'; // ✅ UNCOMMENT
 
-const AppRoutes = () => {
+function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
@@ -20,9 +22,10 @@ const AppRoutes = () => {
         <Route path="/details/:showId" element={<Details />} />
         <Route path="/booking-confirmation/:bookingId" element={<BookingConfirmation />} />
         <Route path="/my-bookings" element={<MyBookings />} />
+        <Route path="/admin/*" element={<AdminRoutes />} /> {/* ✅ UNCOMMENT */}
       </Routes>
     </BrowserRouter>
   );
-};
+}
 
 export default AppRoutes;

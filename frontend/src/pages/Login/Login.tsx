@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../../components/Navbar";
@@ -13,10 +12,8 @@ function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get redirect path from location state or sessionStorage
   const from = location.state?.from?.pathname || sessionStorage.getItem("redirectAfterLogin") || "/";
 
-  // Clear redirect after login if coming from session
   useEffect(() => {
     sessionStorage.removeItem("redirectAfterLogin");
   }, []);
@@ -39,11 +36,16 @@ function Login() {
         throw new Error(data.message || "Login failed");
       }
 
-      // Save token and user data
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Check if there's a pending booking
+      // ─── 🔥 CHECK IF USER IS ADMIN ───
+      if (data.user.role === "ADMIN") {
+        navigate("/admin");
+        return;
+      }
+
+      // ─── CUSTOMER FLOW ───
       const pendingBooking = sessionStorage.getItem("pendingBooking");
       if (pendingBooking) {
         const bookingData = JSON.parse(pendingBooking);
@@ -53,7 +55,6 @@ function Login() {
         return;
       }
 
-      // Redirect to the intended page or home
       navigate(from);
     } catch (err: any) {
       setError(err.message || "Invalid email or password. Please try again.");
@@ -147,8 +148,8 @@ function Login() {
             <div className="mt-8 pt-6 border-t border-gray-700 text-center">
               <p className="text-gray-500 text-xs">Demo credentials:</p>
               <p className="text-gray-500 text-xs mt-1">
-                Email: <span className="text-gray-400">dagim@example.com</span> |{" "}
-                Password: <span className="text-gray-400">123456</span>
+                Email: <span className="text-gray-400">admin@alemcinema.com</span> | 
+                Password: <span className="text-gray-400">admin123</span>
               </p>
             </div>
           </div>

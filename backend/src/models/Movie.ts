@@ -12,11 +12,11 @@ const movieSchema = new mongoose.Schema(
       required: true,
     },
     genre: {
-      type: [String], // Array of genres e.g., ["Action", "Drama"]
+      type: [String],
       required: true,
     },
     duration: {
-      type: Number, // in minutes
+      type: Number,
       required: true,
     },
     language: {
@@ -25,14 +25,15 @@ const movieSchema = new mongoose.Schema(
     },
     releaseDate: {
       type: Date,
-      required: true,
+      required: false, // ✅ NOW OPTIONAL – can be null or not provided
+      default: null,
     },
     poster: {
-      type: String, // URL to the poster image
+      type: String,
       default: "",
     },
     trailer: {
-      type: String, // URL to the trailer video (YouTube)
+      type: String,
       default: "",
     },
     rating: {

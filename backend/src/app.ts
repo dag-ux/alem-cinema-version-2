@@ -10,19 +10,14 @@ import theaterPerformanceRoutes from "./routes/theaterPerformance.routes";
 import hallRoutes from "./routes/hall.routes";
 import showRoutes from "./routes/show.routes";
 import bookingRoutes from "./routes/booking.routes";
+import adminRoutes from "./routes/admin.routes"; // ← ADD THIS
 
 const app = express();
 
-// ===== CORS CONFIGURATION =====
-app.use(
-  cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:5174"],
+  credentials: true,
+}));
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
@@ -34,6 +29,7 @@ app.use("/api/theater-performances", theaterPerformanceRoutes);
 app.use("/api/halls", hallRoutes);
 app.use("/api/shows", showRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/admin", adminRoutes); // ← ADD THIS
 
 app.get("/", (req, res) => {
   res.json({

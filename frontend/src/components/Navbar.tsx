@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaTicketAlt, FaUser, FaHome, FaSignOutAlt } from "react-icons/fa";
+import {
+  FaTicketAlt,
+  FaUser,
+  FaHome,
+  FaSignOutAlt,
+  FaInfoCircle,
+  FaPhoneAlt,
+} from "react-icons/fa";
 
 function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -31,46 +38,67 @@ function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-[#1a1a1a] shadow-[0_4px_30px_rgba(0,0,0,0.6)] px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-2">
-      {/* Logo */}
-      <Link to="/" className="flex items-center gap-3 no-underline">
+      {/* ─── Logo ─── */}
+      <Link to="/" className="flex items-center gap-3 no-underline group">
         <img
           src="/logo.jpg"
-          alt="Alem Cinema Logo"
-          className="h-[38px] sm:h-[42px] w-auto rounded-lg object-contain"
+          alt="Alem Cinema"
+          className="h-[40px] sm:h-[48px] w-auto rounded-lg object-contain transition-transform duration-300 group-hover:scale-105"
         />
-        <span className="text-[#f47920] text-[18px] sm:text-[22px] font-bold tracking-[0.5px]">
-          Alem Cinema
-        </span>
+        <div className="flex flex-col">
+          <span className="text-[#f47920] text-[18px] sm:text-[22px] font-bold tracking-[0.5px] leading-tight">
+            Alem Cinema
+          </span>
+          <span className="text-[10px] text-gray-500 tracking-widest uppercase hidden sm:block">
+            Since 2004
+          </span>
+        </div>
       </Link>
 
-      {/* Navigation */}
+      {/* ─── Navigation ─── */}
       <div className="flex flex-wrap items-center gap-3 sm:gap-6 lg:gap-8">
         <Link
           to="/"
-          className="text-[#e0e0e0] text-[13px] sm:text-[15px] flex items-center gap-1.5 border-b-2 border-transparent hover:border-[#f47920] hover:text-[#f47920] transition-colors duration-300 px-1 py-1.5 no-underline"
+          className="text-[#e0e0e0] text-[13px] sm:text-[15px] flex items-center gap-1.5 border-b-2 border-transparent hover:border-[#f47920] hover:text-[#f47920] transition-all duration-300 px-1 py-1.5 no-underline"
         >
           <FaHome /> Home
         </Link>
 
         <Link
           to="/shows"
-          className="text-[#e0e0e0] text-[13px] sm:text-[15px] flex items-center gap-1.5 border-b-2 border-transparent hover:border-[#f47920] hover:text-[#f47920] transition-colors duration-300 px-1 py-1.5 no-underline"
+          className="text-[#e0e0e0] text-[13px] sm:text-[15px] flex items-center gap-1.5 border-b-2 border-transparent hover:border-[#f47920] hover:text-[#f47920] transition-all duration-300 px-1 py-1.5 no-underline"
         >
           <FaTicketAlt /> Shows
+        </Link>
+
+        {/* ─── NEW: About Us ─── */}
+        <Link
+          to="/about"
+          className="text-[#e0e0e0] text-[13px] sm:text-[15px] flex items-center gap-1.5 border-b-2 border-transparent hover:border-[#f47920] hover:text-[#f47920] transition-all duration-300 px-1 py-1.5 no-underline"
+        >
+          <FaInfoCircle /> About Us
+        </Link>
+
+        {/* ─── NEW: Contact ─── */}
+        <Link
+          to="/contact"
+          className="text-[#e0e0e0] text-[13px] sm:text-[15px] flex items-center gap-1.5 border-b-2 border-transparent hover:border-[#f47920] hover:text-[#f47920] transition-all duration-300 px-1 py-1.5 no-underline"
+        >
+          <FaPhoneAlt /> Contact
         </Link>
 
         {isLoggedIn ? (
           <>
             <Link
               to="/my-bookings"
-              className="text-[#e0e0e0] text-[13px] sm:text-[15px] flex items-center gap-1.5 border-b-2 border-transparent hover:border-[#f47920] hover:text-[#f47920] transition-colors duration-300 px-1 py-1.5 no-underline"
+              className="text-[#e0e0e0] text-[13px] sm:text-[15px] flex items-center gap-1.5 border-b-2 border-transparent hover:border-[#f47920] hover:text-[#f47920] transition-all duration-300 px-1 py-1.5 no-underline"
             >
-              <FaTicketAlt /> My Bookings
+              My Bookings
             </Link>
 
             {userName && (
               <span className="text-gray-400 text-xs sm:text-sm hidden sm:inline">
-                👋 {userName.split(" ")[0]}
+                {userName.split(" ")[0]}
               </span>
             )}
 

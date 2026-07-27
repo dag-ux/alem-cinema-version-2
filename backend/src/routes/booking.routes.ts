@@ -29,6 +29,7 @@ router.get("/show/:showId", async (req, res) => {
 });
 
 // ─── 2. Get current user's bookings ───
+// ⚠️ MUST come before /:id
 // GET /api/bookings/my-bookings
 router.get("/my-bookings", authenticate, async (req, res) => {
   try {
@@ -114,7 +115,6 @@ router.post("/", authenticate, async (req, res) => {
     const { showId, seats } = req.body;
     const userId = req.user.id;
 
-    // 1. Validate input
     if (!showId || !seats || seats.length === 0) {
       return res.status(400).json({
         success: false,
@@ -122,7 +122,6 @@ router.post("/", authenticate, async (req, res) => {
       });
     }
 
-    // 2. Find the show
     const show = await Show.findById(showId);
     if (!show) {
       return res.status(404).json({
@@ -131,7 +130,6 @@ router.post("/", authenticate, async (req, res) => {
       });
     }
 
-    // 3. Check if the show is active
     if (!show.isActive) {
       return res.status(400).json({
         success: false,
@@ -139,20 +137,29 @@ router.post("/", authenticate, async (req, res) => {
       });
     }
 
-    // 4. ⭐ CRITICAL: Check if the show has already ended (past date) ⭐
+    // UTC date comparison (matches frontend)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const showDate = new Date(show.date);
-    showDate.setHours(0, 0, 0, 0);
 
-    if (showDate < today) {
+    const isBeforeToday = (date1: Date, date2: Date): boolean => {
+      return (
+        date1.getUTCFullYear() < date2.getUTCFullYear() ||
+        (date1.getUTCFullYear() === date2.getUTCFullYear() &&
+          date1.getUTCMonth() < date2.getUTCMonth()) ||
+        (date1.getUTCFullYear() === date2.getUTCFullYear() &&
+          date1.getUTCMonth() === date2.getUTCMonth() &&
+          date1.getUTCDate() < date2.getUTCDate())
+      );
+    };
+
+    if (isBeforeToday(showDate, today)) {
       return res.status(400).json({
         success: false,
         message: "This show has already ended and cannot be booked.",
       });
     }
 
-    // 5. Check seat availability
+    // Check seat availability
     const existingBookings = await Booking.find({
       showId,
       status: { $in: ["PENDING", "CONFIRMED"] },
@@ -176,10 +183,8 @@ router.post("/", authenticate, async (req, res) => {
       });
     }
 
-    // 6. Calculate total price
     const totalPrice = seats.length * show.price;
 
-    // 7. Create the booking
     const booking = await Booking.create({
       userId,
       showId,
@@ -188,7 +193,6 @@ router.post("/", authenticate, async (req, res) => {
       status: "CONFIRMED",
     });
 
-    // 8. Populate and return
     const populatedBooking = await Booking.findById(booking._id)
       .populate("userId", "fullName email")
       .populate({
