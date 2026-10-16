@@ -1,209 +1,360 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import Show from "../models/Show";
-import { authenticate, isAdmin } from "../middleware/auth";
+import Movie from "../models/Movie";
+import Hall from "../models/Hall";
+import TheaterPerformance from "../models/TheaterPerformance";
+
+console.log("🔥 SHOW ROUTES FILE IS BEING LOADED!");
 
 const router = Router();
 
-// GET all shows (Public)
-router.get("/", async (req, res) => {
+// ─── Test route ──────────────────────────────────────────────
+router.get("/ping", (req: Request, res: Response) => {
+  console.log("✅ /ping was called!");
+  res.json({
+    success: true,
+    message: "Pong! Show routes are working",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ─── GET all shows ──────────────────────────────────────────────
+router.get("/", async (req: Request, res: Response) => {
   try {
+    console.log("✅ GET /api/shows was called!");
+    
     const shows = await Show.find()
-      .populate("movieId", "title poster duration description genre language releaseDate trailer rating")
-      .populate("theaterPerformanceId", "title poster duration description genre language cast director rating")
-      .populate("hallId", "hallNumber rows columns");
+      .populate('movieId', 'title poster duration genre language rating')
+      .populate('theaterPerformanceId', 'title poster duration genre')
+      .populate('hallId', 'hallNumber rows columns capacity type')
+      .sort({ date: 1, startTime: 1 })
+      .lean();
 
+    console.log(`📽️ Found ${shows.length} shows`);
+
+    // ✅ Date is a string, no conversion needed
     res.json({
       success: true,
+      message: "Shows fetched successfully",
+      shows: shows,
       count: shows.length,
-      shows,
+      timestamp: new Date().toISOString(),
+      timezone: "EAT (UTC+3)"
     });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error fetching shows:", error);
     res.status(500).json({
       success: false,
-      message: "Server error fetching shows",
+      message: "Failed to fetch shows",
+      error: error instanceof Error ? error.message : "Unknown error"
     });
   }
 });
 
-// GET shows by type (MOVIE or THEATER)
-router.get("/type/:type", async (req, res) => {
-  try {
-    const { type } = req.params;
-
-    if (type !== "MOVIE" && type !== "THEATER") {
-      return res.status(400).json({
-        success: false,
-        message: "Type must be MOVIE or THEATER",
-      });
-    }
-
-    const shows = await Show.find({ itemType: type as "MOVIE" | "THEATER" })
-      .populate("movieId", "title poster duration description genre language releaseDate trailer rating")
-      .populate("theaterPerformanceId", "title poster duration description genre language cast director rating")
-      .populate("hallId", "hallNumber rows columns");
-
-    res.json({
-      success: true,
-      count: shows.length,
-      shows,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Server error fetching shows by type",
-    });
-  }
-});
-
-// GET single show (Public)
-router.get("/:id", async (req, res) => {
+// ─── GET single show by ID ──────────────────────────────────
+router.get("/:id", async (req: Request, res: Response) => {
   try {
     const show = await Show.findById(req.params.id)
-      .populate("movieId", "title poster duration description genre language releaseDate trailer rating")
-      .populate("theaterPerformanceId", "title poster duration description genre language cast director rating")
-      .populate("hallId", "hallNumber rows columns");
+      .populate('movieId', 'title poster duration genre language description trailer rating')
+      .populate('theaterPerformanceId', 'title poster duration genre description')
+      .populate('hallId', 'hallNumber rows columns capacity type');
 
     if (!show) {
       return res.status(404).json({
         success: false,
-        message: "Show not found",
+        message: "Show not found"
       });
     }
 
+    console.log(`✅ Show found: ${show._id}`);
+
     res.json({
       success: true,
-      show,
+      show: show,
     });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error fetching show:", error);
     res.status(500).json({
       success: false,
-      message: "Server error fetching show",
+      message: "Failed to fetch show"
     });
   }
 });
 
-// POST create show (Admin only)
-router.post("/", authenticate, isAdmin, async (req, res) => {
+// ─── POST create show ───────────────────────────────────────
+router.post("/", async (req: Request, res: Response) => {
   try {
-    const {
-      itemType,
-      movieId,
-      theaterPerformanceId,
-      hallId,
-      date,
-      startTime,
-      endTime,
-      price,
-    } = req.body;
+    console.log("📝 Creating new show...");
+    console.log("Request body:", req.body);
 
-    if (!itemType || !["MOVIE", "THEATER"].includes(itemType)) {
+    const { itemType, movieId, theaterPerformanceId, hallId, date, startTime, endTime, price } = req.body;
+
+    // ─── Validation ──────────────────────────────────────────
+    if (!itemType) {
       return res.status(400).json({
         success: false,
-        message: "itemType must be MOVIE or THEATER",
+        message: "itemType is required (MOVIE or THEATER)"
+      });
+    }
+
+    if (!hallId) {
+      return res.status(400).json({
+        success: false,
+        message: "hallId is required"
+      });
+    }
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: "date is required"
+      });
+    }
+
+    if (!startTime) {
+      return res.status(400).json({
+        success: false,
+        message: "startTime is required"
+      });
+    }
+
+    if (!endTime) {
+      return res.status(400).json({
+        success: false,
+        message: "endTime is required"
+      });
+    }
+
+    if (!price) {
+      return res.status(400).json({
+        success: false,
+        message: "price is required"
+      });
+    }
+
+    if (itemType !== "MOVIE" && itemType !== "THEATER") {
+      return res.status(400).json({
+        success: false,
+        message: "itemType must be MOVIE or THEATER"
       });
     }
 
     if (itemType === "MOVIE" && !movieId) {
       return res.status(400).json({
         success: false,
-        message: "movieId is required for MOVIE type shows",
+        message: "movieId is required for MOVIE type"
       });
     }
 
     if (itemType === "THEATER" && !theaterPerformanceId) {
       return res.status(400).json({
         success: false,
-        message: "theaterPerformanceId is required for THEATER type shows",
+        message: "theaterPerformanceId is required for THEATER type"
       });
     }
 
-    if (!hallId || !date || !startTime || !endTime || !price) {
-      return res.status(400).json({
+    // ─── Check if hall exists ──────────────────────────────
+    const hallExists = await Hall.findById(hallId);
+    if (!hallExists) {
+      return res.status(404).json({
         success: false,
-        message: "hallId, date, startTime, endTime, and price are required",
+        message: "Hall not found"
       });
     }
 
-    const show = await Show.create({
+    // ─── Check if movie exists ──────────────────────────────
+    if (itemType === "MOVIE") {
+      const movieExists = await Movie.findById(movieId);
+      if (!movieExists) {
+        return res.status(404).json({
+          success: false,
+          message: "Movie not found"
+        });
+      }
+    }
+
+    // ─── Create show with date as string (no conversion) ────
+    const showData: any = {
       itemType,
-      movieId,
-      theaterPerformanceId,
       hallId,
-      date,
-      startTime,
-      endTime,
-      price,
-    });
+      date: date, // ✅ store as string (DD/MM/YYYY)
+      startTime: startTime, // Ethiopian time format
+      endTime: endTime,     // Ethiopian time format
+      price: parseFloat(price),
+    };
+
+    if (itemType === "MOVIE") {
+      showData.movieId = movieId;
+    } else {
+      showData.theaterPerformanceId = theaterPerformanceId;
+    }
+
+    console.log(`📝 Storing date: ${date}, times: ${startTime} - ${endTime} (Ethiopian format)`);
+
+    const show = new Show(showData);
+    await show.save();
+
+    // ─── Populate and return ──────────────────────────────────
+    const populatedShow = await Show.findById(show._id)
+      .populate('movieId', 'title poster duration genre')
+      .populate('theaterPerformanceId', 'title poster duration')
+      .populate('hallId', 'hallNumber rows columns capacity type');
+
+    console.log(`✅ Show created successfully: ${show._id}`);
 
     res.status(201).json({
       success: true,
       message: "Show created successfully",
-      show,
+      show: populatedShow,
     });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error creating show:", error);
     res.status(500).json({
       success: false,
-      message: "Server error creating show",
+      message: "Failed to create show",
+      error: error instanceof Error ? error.message : "Unknown error"
     });
   }
 });
 
-// PUT update show (Admin only)
-router.put("/:id", authenticate, isAdmin, async (req, res) => {
+// ─── PUT update show ────────────────────────────────────────
+router.put("/:id", async (req: Request, res: Response) => {
   try {
-    const show = await Show.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    console.log(`📝 Updating show: ${req.params.id}`);
+    console.log("Request body:", req.body);
 
-    if (!show) {
+    const { itemType, movieId, theaterPerformanceId, hallId, date, startTime, endTime, price } = req.body;
+
+    const existingShow = await Show.findById(req.params.id);
+    if (!existingShow) {
       return res.status(404).json({
         success: false,
-        message: "Show not found",
+        message: "Show not found"
       });
     }
 
-    res.json({
+    const updateData: any = {};
+
+    if (itemType) {
+      if (itemType !== "MOVIE" && itemType !== "THEATER") {
+        return res.status(400).json({
+          success: false,
+          message: "itemType must be MOVIE or THEATER"
+        });
+      }
+      updateData.itemType = itemType;
+    }
+
+    if (hallId) {
+      const hallExists = await Hall.findById(hallId);
+      if (!hallExists) {
+        return res.status(404).json({
+          success: false,
+          message: "Hall not found"
+        });
+      }
+      updateData.hallId = hallId;
+    }
+
+    // ✅ Store date as string (no conversion)
+    if (date) {
+      updateData.date = date;
+      console.log(`📝 Updating date: ${date}`);
+    }
+
+    // ✅ Store Ethiopian time directly
+    if (startTime) {
+      updateData.startTime = startTime;
+      console.log(`📝 Updating start time: ${startTime} (Ethiopian format)`);
+    }
+
+    if (endTime) {
+      updateData.endTime = endTime;
+      console.log(`📝 Updating end time: ${endTime} (Ethiopian format)`);
+    }
+
+    if (price) {
+      updateData.price = parseFloat(price);
+    }
+
+    if (itemType === "MOVIE" && movieId) {
+      const movieExists = await Movie.findById(movieId);
+      if (!movieExists) {
+        return res.status(404).json({
+          success: false,
+          message: "Movie not found"
+        });
+      }
+      updateData.movieId = movieId;
+      updateData.theaterPerformanceId = undefined;
+    } else if (itemType === "THEATER" && theaterPerformanceId) {
+      const theaterExists = await TheaterPerformance.findById(theaterPerformanceId);
+      if (!theaterExists) {
+        return res.status(404).json({
+          success: false,
+          message: "Theater performance not found"
+        });
+      }
+      updateData.theaterPerformanceId = theaterPerformanceId;
+      updateData.movieId = undefined;
+    }
+
+    const updatedShow = await Show.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    )
+    .populate('movieId', 'title poster duration genre')
+    .populate('theaterPerformanceId', 'title poster duration')
+    .populate('hallId', 'hallNumber rows columns capacity type');
+
+    console.log(`✅ Show updated successfully: ${req.params.id}`);
+
+    res.status(200).json({
       success: true,
       message: "Show updated successfully",
-      show,
+      show: updatedShow,
     });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error updating show:", error);
     res.status(500).json({
       success: false,
-      message: "Server error updating show",
+      message: "Failed to update show",
+      error: error instanceof Error ? error.message : "Unknown error"
     });
   }
 });
 
-// DELETE show (Admin only)
-router.delete("/:id", authenticate, isAdmin, async (req, res) => {
+// ─── DELETE show ─────────────────────────────────────────────
+router.delete("/:id", async (req: Request, res: Response) => {
   try {
-    const show = await Show.findByIdAndDelete(req.params.id);
+    console.log(`🗑️ Deleting show: ${req.params.id}`);
 
+    const show = await Show.findByIdAndDelete(req.params.id);
     if (!show) {
       return res.status(404).json({
         success: false,
-        message: "Show not found",
+        message: "Show not found"
       });
     }
 
-    res.json({
+    console.log(`✅ Show deleted successfully: ${req.params.id}`);
+
+    res.status(200).json({
       success: true,
       message: "Show deleted successfully",
     });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error deleting show:", error);
     res.status(500).json({
       success: false,
-      message: "Server error deleting show",
+      message: "Failed to delete show",
+      error: error instanceof Error ? error.message : "Unknown error"
     });
   }
 });
+
+console.log("✅ Router created with", router.stack?.length || 0, "routes");
+console.log("🔥 SHOW ROUTES FILE LOADED SUCCESSFULLY!");
 
 export default router;

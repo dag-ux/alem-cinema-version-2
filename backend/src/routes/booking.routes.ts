@@ -1,13 +1,18 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import Booking from "../models/Booking";
 import Show from "../models/Show";
 import { authenticate, isAdmin } from "../middleware/auth";
+import jwt from "jsonwebtoken";
+import {
+  ethiopianToGregorianDate,
+  isEthiopianDateTodayOrFuture,
+  parseEthiopianDate,
+} from "../utils/ethiopianCalendar";
 
 const router = Router();
 
 // ─── 1. Get booked seats for a specific show ───
-// GET /api/bookings/show/:showId
-router.get("/show/:showId", async (req, res) => {
+router.get("/show/:showId", async (req: Request, res: Response) => {
   try {
     const { showId } = req.params;
     const bookings = await Booking.find({
@@ -18,6 +23,7 @@ router.get("/show/:showId", async (req, res) => {
     res.json({
       success: true,
       bookedSeats,
+      count: bookedSeats.length,
     });
   } catch (error) {
     console.error("Error fetching booked seats:", error);
@@ -28,32 +34,56 @@ router.get("/show/:showId", async (req, res) => {
   }
 });
 
-// ─── 2. Get current user's bookings ───
-// ⚠️ MUST come before /:id
-// GET /api/bookings/my-bookings
-router.get("/my-bookings", authenticate, async (req, res) => {
+// ─── 2. Get bookings by email (for guests) ───
+router.get("/email/:email", async (req: Request, res: Response) => {
   try {
-    const bookings = await Booking.find({ userId: req.user.id })
-      .sort({ createdAt: -1 });
-
-    const populatedBookings = await Promise.all(
-      bookings.map(async (booking) => {
-        const populated = await Booking.populate(booking, {
-          path: "showId",
-          populate: [
-            { path: "movieId", select: "title poster duration" },
-            { path: "theaterPerformanceId", select: "title poster duration" },
-            { path: "hallId", select: "hallNumber rows columns" },
-          ],
-        });
-        return populated;
+    const { email } = req.params;
+    const bookings = await Booking.find({
+      "customerInfo.email": email.toLowerCase(),
+      status: "CONFIRMED",
+    })
+      .populate({
+        path: "showId",
+        populate: [
+          { path: "movieId", select: "title poster duration genre rating" },
+          { path: "theaterPerformanceId", select: "title poster duration" },
+          { path: "hallId", select: "hallNumber" },
+        ],
       })
-    );
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
-      count: populatedBookings.length,
-      bookings: populatedBookings,
+      count: bookings.length,
+      bookings,
+    });
+  } catch (error) {
+    console.error("Error fetching bookings by email:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching bookings",
+    });
+  }
+});
+
+// ─── 3. Get current user's bookings ───
+router.get("/my-bookings", authenticate, async (req: Request, res: Response) => {
+  try {
+    const bookings = await Booking.find({ userId: req.user.id })
+      .populate({
+        path: "showId",
+        populate: [
+          { path: "movieId", select: "title poster duration genre rating" },
+          { path: "theaterPerformanceId", select: "title poster duration" },
+          { path: "hallId", select: "hallNumber rows columns" },
+        ],
+      })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: bookings.length,
+      bookings,
     });
   } catch (error) {
     console.error("Error in my-bookings:", error);
@@ -65,18 +95,17 @@ router.get("/my-bookings", authenticate, async (req, res) => {
   }
 });
 
-// ─── 3. Get a single booking by ID ───
-// GET /api/bookings/:id
-router.get("/:id", authenticate, async (req, res) => {
+// ─── 4. Get a single booking by ID (Public) ───
+router.get("/:id", async (req: Request, res: Response) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate("userId", "fullName email")
+      .populate("userId", "fullName email phone")
       .populate({
         path: "showId",
         populate: [
-          { path: "movieId", select: "title poster duration" },
+          { path: "movieId", select: "title poster duration genre rating description trailer" },
           { path: "theaterPerformanceId", select: "title poster duration" },
-          { path: "hallId", select: "hallNumber rows columns" },
+          { path: "hallId", select: "hallNumber rows columns type" },
         ],
       });
 
@@ -84,13 +113,6 @@ router.get("/:id", authenticate, async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Booking not found",
-      });
-    }
-
-    if (booking.userId._id.toString() !== req.user.id && req.user.role !== "ADMIN") {
-      return res.status(403).json({
-        success: false,
-        message: "You are not authorized to view this booking",
       });
     }
 
@@ -108,21 +130,52 @@ router.get("/:id", authenticate, async (req, res) => {
   }
 });
 
-// ─── 4. CREATE a booking ───
-// POST /api/bookings
-router.post("/", authenticate, async (req, res) => {
+// ─── 5. CREATE a booking ───
+router.post("/", async (req: Request, res: Response) => {
   try {
-    const { showId, seats } = req.body;
-    const userId = req.user.id;
+    console.log("📝 Creating new booking...");
+    console.log("Request body:", req.body);
 
-    if (!showId || !seats || seats.length === 0) {
+    const { showId, seats, customerInfo } = req.body;
+
+    // ─── Validation ──────────────────────────────────────────
+    if (!showId) {
       return res.status(400).json({
         success: false,
-        message: "showId and seats are required",
+        message: "showId is required",
       });
     }
 
-    const show = await Show.findById(showId);
+    if (!seats || !Array.isArray(seats) || seats.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one seat is required",
+      });
+    }
+
+    // ✅ SEAT FORMAT VALIDATION - FIXES THE "84", "85" ISSUE
+    const seatPattern = /^[A-Z][0-9]+$/;
+    const invalidSeats = seats.filter((seat: string) => !seatPattern.test(seat));
+
+    if (invalidSeats.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid seat format: ${invalidSeats.join(", ")}. Seats must be like A1, B10, C5`,
+        invalidSeats,
+      });
+    }
+
+    // ✅ Check for duplicate seats
+    const uniqueSeats = new Set(seats);
+    if (uniqueSeats.size !== seats.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate seats selected. Please select unique seats.",
+      });
+    }
+
+    // ─── Check if show exists ──────────────────────────────
+    const show = await Show.findById(showId).populate("hallId");
     if (!show) {
       return res.status(404).json({
         success: false,
@@ -137,80 +190,121 @@ router.post("/", authenticate, async (req, res) => {
       });
     }
 
-    // UTC date comparison (matches frontend)
-    const today = new Date();
-    const showDate = new Date(show.date);
+    // ✅ CORRECTED: Check if show has ended using ETHIOPIAN → GREGORIAN conversion
+    console.log("📅 Show date (Ethiopian):", show.date);
+    const gregorianDate = ethiopianToGregorianDate(show.date);
+    console.log("📅 Show date (Gregorian):", gregorianDate);
+    console.log("📅 Today:", new Date());
+    console.log("📅 Is today or future?", isEthiopianDateTodayOrFuture(show.date));
 
-    const isBeforeToday = (date1: Date, date2: Date): boolean => {
-      return (
-        date1.getUTCFullYear() < date2.getUTCFullYear() ||
-        (date1.getUTCFullYear() === date2.getUTCFullYear() &&
-          date1.getUTCMonth() < date2.getUTCMonth()) ||
-        (date1.getUTCFullYear() === date2.getUTCFullYear() &&
-          date1.getUTCMonth() === date2.getUTCMonth() &&
-          date1.getUTCDate() < date2.getUTCDate())
-      );
-    };
+    if (!gregorianDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid show date format.",
+      });
+    }
 
-    if (isBeforeToday(showDate, today)) {
+    if (!isEthiopianDateTodayOrFuture(show.date)) {
       return res.status(400).json({
         success: false,
         message: "This show has already ended and cannot be booked.",
       });
     }
 
-    // Check seat availability
+    // ─── Check seat availability ────────────────────────────
     const existingBookings = await Booking.find({
       showId,
       status: { $in: ["PENDING", "CONFIRMED"] },
-      seats: { $in: seats },
     });
 
-    if (existingBookings.length > 0) {
-      const takenSeats = new Set<string>();
-      existingBookings.forEach((booking) => {
-        booking.seats.forEach((seat) => {
-          if (seats.includes(seat)) {
-            takenSeats.add(seat);
-          }
-        });
-      });
+    const bookedSeats: string[] = [];
+    existingBookings.forEach((booking) => {
+      bookedSeats.push(...booking.seats);
+    });
 
+    const unavailableSeats = seats.filter((seat: string) => bookedSeats.includes(seat));
+    if (unavailableSeats.length > 0) {
       return res.status(409).json({
         success: false,
-        message: `Seats ${Array.from(takenSeats).join(", ")} are already booked`,
-        takenSeats: Array.from(takenSeats),
+        message: `Seats ${unavailableSeats.join(", ")} are already booked`,
+        unavailableSeats,
       });
     }
 
+    // ─── Check if user is authenticated ──────────────────────
+    const token = req.headers.authorization?.split(" ")[1];
+    let userId = null;
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret") as { id: string };
+        userId = decoded.id;
+        console.log(`✅ Authenticated user: ${userId}`);
+      } catch (err) {
+        console.log("⚠️ Invalid token, treating as guest");
+      }
+    }
+
+    // ─── Create booking ──────────────────────────────────────
     const totalPrice = seats.length * show.price;
 
-    const booking = await Booking.create({
-      userId,
+    const bookingData: any = {
       showId,
       seats,
       totalPrice,
       status: "CONFIRMED",
-    });
+    };
 
+    if (userId) {
+      bookingData.userId = userId;
+      console.log(`📝 Booking for user: ${userId}`);
+    } else if (customerInfo) {
+      // ✅ Validate customer info for guest bookings
+      if (!customerInfo.fullName || !customerInfo.email || !customerInfo.phone) {
+        return res.status(400).json({
+          success: false,
+          message: "Full name, email, and phone are required for guest bookings",
+        });
+      }
+
+      bookingData.customerInfo = {
+        fullName: customerInfo.fullName.trim(),
+        email: customerInfo.email.toLowerCase().trim(),
+        phone: customerInfo.phone.trim(),
+      };
+      console.log(`📝 Guest booking for: ${customerInfo.fullName}`);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Customer info is required for guest bookings",
+      });
+    }
+
+    const booking = new Booking(bookingData);
+    await booking.save();
+
+    // ─── Populate and return booking ────────────────────────
     const populatedBooking = await Booking.findById(booking._id)
-      .populate("userId", "fullName email")
+      .populate("userId", "fullName email phone")
       .populate({
         path: "showId",
         populate: [
-          { path: "movieId", select: "title poster duration" },
+          { path: "movieId", select: "title poster duration genre rating" },
           { path: "theaterPerformanceId", select: "title poster duration" },
-          { path: "hallId", select: "hallNumber rows columns" },
+          { path: "hallId", select: "hallNumber rows columns type" },
         ],
       });
 
+    console.log(`✅ Booking created: ${booking.bookingCode}`);
+
     res.status(201).json({
       success: true,
-      message: "Booking created successfully",
+      message: "Booking confirmed successfully!",
       booking: populatedBooking,
     });
+
   } catch (error) {
-    console.error("Error creating booking:", error);
+    console.error("❌ Error creating booking:", error);
     const message = error instanceof Error ? error.message : "Server error creating booking";
     res.status(500).json({
       success: false,
@@ -219,9 +313,8 @@ router.post("/", authenticate, async (req, res) => {
   }
 });
 
-// ─── 5. CANCEL a booking ───
-// PUT /api/bookings/:id/cancel
-router.put("/:id/cancel", authenticate, async (req, res) => {
+// ─── 6. CANCEL a booking (Authenticated users only) ───
+router.put("/:id/cancel", authenticate, async (req: Request, res: Response) => {
   try {
     const booking = await Booking.findOne({
       _id: req.params.id,
@@ -260,18 +353,17 @@ router.put("/:id/cancel", authenticate, async (req, res) => {
   }
 });
 
-// ─── 6. GET all bookings (Admin only) ───
-// GET /api/bookings
-router.get("/", authenticate, isAdmin, async (req, res) => {
+// ─── 7. GET all bookings (Admin only) ───
+router.get("/", authenticate, isAdmin, async (req: Request, res: Response) => {
   try {
     const bookings = await Booking.find()
-      .populate("userId", "fullName email")
+      .populate("userId", "fullName email phone")
       .populate({
         path: "showId",
         populate: [
-          { path: "movieId", select: "title poster duration" },
+          { path: "movieId", select: "title poster duration genre rating" },
           { path: "theaterPerformanceId", select: "title poster duration" },
-          { path: "hallId", select: "hallNumber rows columns" },
+          { path: "hallId", select: "hallNumber rows columns type" },
         ],
       })
       .sort({ createdAt: -1 });

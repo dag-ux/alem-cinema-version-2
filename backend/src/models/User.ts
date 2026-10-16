@@ -6,23 +6,20 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
     },
-
+    phone: {
+      type: String,
+      required: true, // ✅ Make phone required
+    },
     password: {
       type: String,
       required: true,
     },
-
-    phone: {
-      type: String,
-    },
-
     role: {
       type: String,
       enum: ["CUSTOMER", "ADMIN"],
@@ -30,7 +27,7 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // adds createdAt & updatedAt
+    timestamps: true,
   }
 );
 

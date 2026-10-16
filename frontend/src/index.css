@@ -2,11 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Optional: your custom styles go here */
-body {
-  font-family: Arial, Helvetica, sans-serif;
+/* ═══════════════════════════════════════════════════════════
+   GLOBAL BASE STYLES
+   ═══════════════════════════════════════════════════════════ */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: "Inter", "Noto Sans Ethiopic", system-ui, -apple-system,
+      "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #0a0a0a;
+    color: #ffffff;
+  }
+
+  /* Headings → elegant cinematic serif (Playfair Display) */
+  h1,
+  h2,
+  h3 {
+    font-family: "Playfair Display", "Noto Sans Ethiopic", Georgia, serif;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+  }
+
+  /* Smaller headings stay in the clean UI font */
+  h4,
+  h5,
+  h6 {
+    font-family: "Inter", "Noto Sans Ethiopic", sans-serif;
+  }
+
+  /* Tabular numbers for prices, ratings, times */
+  .tabular-nums,
+  input[type="number"],
+  time,
+  .price,
+  .rating {
+    font-variant-numeric: tabular-nums;
+  }
 }
-/* Custom scrollbar for schedule cards */
+
+/* ═══════════════════════════════════════════════════════════
+   GLOBAL SCROLLBAR (app-wide)
+   ═══════════════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #f47920;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CUSTOM SCROLLBAR FOR SCHEDULE CARDS (kept as you had it)
+   ═══════════════════════════════════════════════════════════ */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
@@ -22,4 +85,29 @@ body {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #d4681a;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   OPTIONAL UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════ */
+@layer utilities {
+  /* Big cinematic hero title */
+  .text-cinematic {
+    font-family: "Playfair Display", Georgia, serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  /* Small uppercase label with wide tracking */
+  .text-label {
+    font-family: "Inter", sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.35em;
+  }
+
+  /* Tabular numbers for aligned columns */
+  .nums-tabular {
+    font-variant-numeric: tabular-nums;
+  }
 }

@@ -6,10 +6,20 @@ import { authenticate } from "../middleware/auth";
 
 const router = Router();
 
-// REGISTER – (already correct, keep as is)
+// ─── REGISTER ───────────────────────────────────────────────
 router.post("/register", async (req, res) => {
   try {
     const { fullName, email, password, phone } = req.body;
+
+    // ─── Validation ──────────────────────────────────────────
+    if (!fullName || !email || !password || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required: fullName, email, phone, password",
+      });
+    }
+
+    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -17,18 +27,26 @@ router.post("/register", async (req, res) => {
         message: "Email already registered",
       });
     }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
     const user = await User.create({
       fullName,
       email,
       password: hashedPassword,
-      phone,
+      phone, // ✅ Phone is saved
     });
+
+    // Generate JWT
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
+
+    // ✅ Return user data WITH phone
     res.status(201).json({
       success: true,
       message: "User registered successfully",
@@ -37,6 +55,7 @@ router.post("/register", async (req, res) => {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
+        phone: user.phone, // ✅ ADDED: Phone is now returned
         role: user.role,
       },
     });
@@ -49,7 +68,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// LOGIN – New implementation
+// ─── LOGIN ──────────────────────────────────────────────────
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -79,7 +98,7 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // 4. Return user data and token
+    // 4. ✅ Return user data WITH phone
     res.json({
       success: true,
       message: "Login successful",
@@ -88,6 +107,7 @@ router.post("/login", async (req, res) => {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
+        phone: user.phone, // ✅ ADDED: Phone is now returned
         role: user.role,
       },
     });
@@ -99,6 +119,8 @@ router.post("/login", async (req, res) => {
     });
   }
 });
+
+// ─── GET PROFILE ────────────────────────────────────────────
 router.get("/profile", authenticate, async (req, res) => {
   try {
     // req.user contains the decoded JWT data
@@ -109,9 +131,19 @@ router.get("/profile", authenticate, async (req, res) => {
         message: "User not found",
       });
     }
+
+    // ✅ Return user data WITH phone
     res.json({
       success: true,
-      user,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone, // ✅ ADDED: Phone is now returned
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
     });
   } catch (error) {
     console.error(error);

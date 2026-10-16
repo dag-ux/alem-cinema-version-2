@@ -1,51 +1,62 @@
-import mongoose from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
-const showSchema = new mongoose.Schema(
+export interface IShow extends Document {
+  itemType: "MOVIE" | "THEATER";
+  movieId?: mongoose.Types.ObjectId;
+  theaterPerformanceId?: mongoose.Types.ObjectId;
+  hallId: mongoose.Types.ObjectId;
+  date: string; // ✅ Ethiopian date in DD/MM/YYYY format
+  startTime: string;
+  endTime: string;
+  price: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const ShowSchema = new Schema<IShow>(
   {
-    // What is being shown?
     itemType: {
       type: String,
       enum: ["MOVIE", "THEATER"],
-      required: true,
+      required: [true, "itemType is required"],
     },
     movieId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Movie",
-      required: function () {
+      required: function(this: any) {
         return this.itemType === "MOVIE";
       },
     },
     theaterPerformanceId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "TheaterPerformance",
-      required: function () {
+      required: function(this: any) {
         return this.itemType === "THEATER";
       },
     },
-
-    // Where is it shown?
     hallId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Hall",
-      required: true,
+      required: [true, "hallId is required"],
     },
-
-    // When is it shown?
     date: {
-      type: Date,
-      required: true,
+      type: String,
+      required: [true, "date is required"],
+      // ✅ No validation – accepts any string (e.g., "01/09/2018")
     },
     startTime: {
-      type: String, // e.g., "14:00"
-      required: true,
+      type: String,
+      required: [true, "startTime is required"],
     },
     endTime: {
-      type: String, // e.g., "16:00"
-      required: true,
+      type: String,
+      required: [true, "endTime is required"],
     },
     price: {
       type: Number,
-      required: true,
+      required: [true, "price is required"],
+      min: [0, "Price cannot be negative"],
     },
     isActive: {
       type: Boolean,
@@ -57,4 +68,8 @@ const showSchema = new mongoose.Schema(
   }
 );
 
-export default mongoose.model("Show", showSchema);
+ShowSchema.index({ date: 1, startTime: 1 });
+ShowSchema.index({ movieId: 1 });
+ShowSchema.index({ hallId: 1 });
+
+export default mongoose.model<IShow>("Show", ShowSchema);
