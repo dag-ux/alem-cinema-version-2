@@ -13,6 +13,14 @@ import {
 } from "react-icons/fa";
 import AdminNavbar from "../../components/AdminNavbar";
 
+// ─── Types ──────────────────────────────────────────────
+interface NavItem {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  end?: boolean;
+}
+
 function AdminLayout() {
   const [userName, setUserName] = useState("");
 
@@ -28,7 +36,7 @@ function AdminLayout() {
     }
   }, []);
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { to: "/admin", icon: FaHome, label: "Dashboard", end: true },
     { to: "/admin/movies", icon: FaFilm, label: "Movies" },
     { to: "/admin/shows", icon: FaCalendarAlt, label: "Shows" },

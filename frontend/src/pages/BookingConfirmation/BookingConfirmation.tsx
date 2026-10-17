@@ -5,14 +5,17 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import {
   FaCheckCircle, FaTicketAlt, FaCalendarAlt, FaClock, FaBuilding,
-  FaUser, FaPrint, FaHome, FaArrowLeft, FaSpinner, FaStar,
+  FaPrint, FaHome, FaArrowLeft,  FaStar,
   FaEnvelope, FaPhone, FaCopy, FaCheck, FaExclamationTriangle,
   FaDownload, FaFilm, FaMapMarkerAlt, FaChair, FaRegClock,
-  FaTheaterMasks, FaShareAlt,
+  FaTheaterMasks, 
 } from "react-icons/fa";
 import {
   formatEthiopianDisplay, formatGregorianDisplay,
 } from "../../utils/calendarUtils";
+
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ─── Types ──────────────────────────────────────────────
 interface Booking {
@@ -75,7 +78,8 @@ function BookingConfirmation() {
 
     const fetchBooking = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/bookings/${bookingId}`);
+        // ✅ FIXED: Using API_BASE_URL instead of localhost
+        const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}`);
         if (!response.ok) {
           if (response.status === 404) throw new Error("Booking not found");
           throw new Error(`Failed to fetch booking (${response.status})`);

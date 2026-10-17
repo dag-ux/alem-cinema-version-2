@@ -4,16 +4,18 @@ import { motion, AnimatePresence, Variants } from "framer-motion";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import {
-  FaTheaterMasks, FaCalendarAlt, FaClock, FaSearch, FaStar,
+  FaTheaterMasks,  FaClock, FaSearch, FaStar,
   FaLanguage, FaTh, FaThList, FaFilter, FaTimes,
   FaInfoCircle, FaChair, FaExclamationTriangle,
-  FaHourglassStart, FaSlidersH, FaGlobe,
-  FaPlay, FaQuoteRight, FaUser, FaUsers,
+  FaHourglassStart, FaSlidersH,  FaUsers,
 } from "react-icons/fa";
 import {
   parseEthiopianDate, formatEthiopianDisplay, formatGregorianDisplay,
   isTodayOrFuture,
 } from "../../utils/calendarUtils";
+
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ─── Types ──────────────────────────────────────────────
 interface CastMember { name: string; image?: string; character?: string; }
@@ -105,9 +107,10 @@ function Theater() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // ✅ FIXED: Using API_BASE_URL instead of localhost
         const [perfRes, showsRes] = await Promise.all([
-          fetch("http://localhost:5000/api/theater-performances"),
-          fetch("http://localhost:5000/api/shows"),
+          fetch(`${API_BASE_URL}/api/theater-performances`),
+          fetch(`${API_BASE_URL}/api/shows`),
         ]);
         if (!perfRes.ok || !showsRes.ok) throw new Error("Failed to fetch data");
 

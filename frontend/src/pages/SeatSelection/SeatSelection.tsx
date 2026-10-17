@@ -14,6 +14,9 @@ import {
   formatGregorianDisplay,
 } from "../../utils/calendarUtils";
 
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // ─── Types ──────────────────────────────────────────────
 interface Show {
   _id: string;
@@ -86,7 +89,8 @@ function SeatSelection() {
 
     const fetchData = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/shows/${showId}`);
+        // ✅ FIXED: Using API_BASE_URL
+        const response = await fetch(`${API_BASE_URL}/api/shows/${showId}`);
         if (!response.ok) throw new Error(`Failed to fetch show: ${response.status}`);
         const data = await response.json();
         if (!data.show) throw new Error("No show data found");
@@ -99,7 +103,8 @@ function SeatSelection() {
 
         // Fetch booked seats
         try {
-          const bookedRes = await fetch(`http://localhost:5000/api/bookings/show/${showId}`);
+          // ✅ FIXED: Using API_BASE_URL
+          const bookedRes = await fetch(`${API_BASE_URL}/api/bookings/show/${showId}`);
           if (bookedRes.ok) {
             const bookedData = await bookedRes.json();
             const bookedSeatsList: string[] = bookedData.bookedSeats || [];
@@ -214,7 +219,8 @@ function SeatSelection() {
       };
       if (!isLoggedIn) payload.customerInfo = customerInfo;
 
-      const response = await fetch("http://localhost:5000/api/bookings", {
+      // ✅ FIXED: Using API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/api/bookings`, {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
@@ -310,7 +316,6 @@ function SeatSelection() {
       </AnimatePresence>
 
       {/* ═══════════ HEADER ═══════════ */}
-      {/* Reduced top padding from pt-32 to pt-20 sm:pt-24 to close the gap */}
       <section className="relative pt-20 sm:pt-24 pb-6 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(244,121,32,0.10)_0%,_transparent_60%)]" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#f47920]/8 rounded-full blur-[120px]" />

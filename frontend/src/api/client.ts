@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// If VITE_API_URL is provided (e.g. https://your-backend.onrender.com), append '/api'
+// Otherwise, fallback to localhost
+const API_URL = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api` 
+  : 'http://localhost:5000/api';
 
 const apiClient = axios.create({
   baseURL: API_URL,

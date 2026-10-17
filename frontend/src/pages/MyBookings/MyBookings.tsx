@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import {
@@ -9,7 +9,6 @@ import {
   FaClock,
   FaBuilding,
   FaEye,
-  FaSpinner,
   FaFilm,
   FaTheaterMasks,
   FaChair,
@@ -22,8 +21,10 @@ import {
 } from "react-icons/fa";
 import {
   formatEthiopianDisplay,
-  formatGregorianDisplay,
 } from "../../utils/calendarUtils";
+
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ─── Types ──────────────────────────────────────────────
 interface Booking {
@@ -80,8 +81,9 @@ function MyBookings() {
           return;
         }
 
+        // ✅ FIXED: Using API_BASE_URL instead of localhost
         const response = await fetch(
-          "http://localhost:5000/api/bookings/my-bookings",
+          `${API_BASE_URL}/api/bookings/my-bookings`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

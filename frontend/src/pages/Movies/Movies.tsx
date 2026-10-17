@@ -4,15 +4,18 @@ import { motion, AnimatePresence, Variants } from "framer-motion";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import {
-  FaFilm, FaCalendarAlt, FaClock, FaSearch, FaStar,
+  FaFilm,  FaClock, FaSearch, FaStar,
   FaLanguage, FaTh, FaThList, FaFilter, FaTimes,
   FaInfoCircle, FaChair, FaExclamationTriangle,
-  FaHourglassStart, FaSlidersH, FaGlobe, FaChevronDown,
+  FaHourglassStart, FaSlidersH, FaGlobe, 
 } from "react-icons/fa";
 import {
   parseEthiopianDate, formatEthiopianDisplay, formatGregorianDisplay,
   isTodayOrFuture,
 } from "../../utils/calendarUtils";
+
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ─── Types ──────────────────────────────────────────────
 interface CastMember { name: string; image?: string; character?: string; }
@@ -93,9 +96,10 @@ function Movies() {
   useEffect(() => {
     const fetchMovies = async () => {
       try {
+        // ✅ FIXED: Using API_BASE_URL instead of localhost
         const [moviesRes, showsRes] = await Promise.all([
-          fetch("http://localhost:5000/api/movies"),
-          fetch("http://localhost:5000/api/shows"),
+          fetch(`${API_BASE_URL}/api/movies`),
+          fetch(`${API_BASE_URL}/api/shows`),
         ]);
         if (!moviesRes.ok || !showsRes.ok) throw new Error("Failed to fetch data");
 
@@ -597,7 +601,6 @@ function Movies() {
   const DetailsModal = () => {
     if (!selectedMovie) return null;
     const movie = selectedMovie;
-    const cast = movie.cast || [];
     const seatStatus = getSeatStatus(movie);
     const release = getReleaseDisplay(movie);
 

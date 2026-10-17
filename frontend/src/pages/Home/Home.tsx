@@ -7,13 +7,16 @@ import {
   FaTicketAlt, FaFilm, FaMapMarkerAlt, FaPhoneAlt, FaStar,
   FaArrowRight, FaPlay, FaClock, FaCouch, FaMobileAlt,
   FaCheckCircle, FaCalendarAlt, FaTimes, FaInfoCircle,
-  FaChair, FaLanguage, FaExclamationTriangle, FaBan,
+  FaChair, FaLanguage, FaBan,
 } from "react-icons/fa";
 import {
   parseEthiopianDate, formatEthiopianDisplay, formatGregorianDisplay,
-  compareEthiopianDates, isTodayOrFuture, getTodayEthiopian,
+  compareEthiopianDates, getTodayEthiopian,
   getWeekRangeFromShows,
 } from "../../utils/calendarUtils";
+
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ─── Types ──────────────────────────────────────────────
 interface Movie {
@@ -292,9 +295,10 @@ function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // ✅ FIXED: Using API_BASE_URL instead of localhost
         const [sR, mR] = await Promise.all([
-          fetch("http://localhost:5000/api/shows"),
-          fetch("http://localhost:5000/api/movies"),
+          fetch(`${API_BASE_URL}/api/shows`),
+          fetch(`${API_BASE_URL}/api/movies`),
         ]);
         if (!sR.ok || !mR.ok) throw new Error("Failed to fetch");
         const sD = await sR.json();

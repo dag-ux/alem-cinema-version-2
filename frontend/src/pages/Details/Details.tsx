@@ -14,6 +14,9 @@ import {
   isTodayOrFuture, compareEthiopianDates,
 } from "../../utils/calendarUtils";
 
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // ─── Types ──────────────────────────────────────────────
 interface CastMember { name: string; image?: string; character?: string; }
 
@@ -90,8 +93,9 @@ function Details() {
 
     const fetchData = async () => {
       try {
+        // ✅ FIXED: Using API_BASE_URL
         const movieResponse = await fetch(
-          `http://localhost:5000/api/movies/${showId}`
+          `${API_BASE_URL}/api/movies/${showId}`
         );
         if (!movieResponse.ok) {
           throw new Error(`Movie not found (${movieResponse.status})`);
@@ -106,7 +110,8 @@ function Details() {
         if (!movie.writer) movie.writer = [];
         setMovie(movie);
 
-        const showsResponse = await fetch(`http://localhost:5000/api/shows`);
+        // ✅ FIXED: Using API_BASE_URL
+        const showsResponse = await fetch(`${API_BASE_URL}/api/shows`);
         if (showsResponse.ok) {
           const showsData = await showsResponse.json();
           const allShows = showsData.shows || [];
@@ -256,7 +261,7 @@ function Details() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/30 backdrop-blur-lg flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
       onClick={() => setShowNoShowModal(false)}
     >
       <motion.div
@@ -277,7 +282,7 @@ function Details() {
             <FaExclamationTriangle className="text-yellow-400 text-xl" />
           </motion.div>
 
-          <h2 className="text-lg font-bold text-white mb-1">No Showtimes</h2>
+          <h2 className="text-lg font-bold text-white font-display mb-1">No Showtimes</h2>
           <p className="text-gray-400 text-xs mb-4">for {movie.title}</p>
 
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-5 w-full">
@@ -387,7 +392,7 @@ function Details() {
 
               {/* Title */}
               <div>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.1] tracking-tight">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.1] tracking-tight font-display">
                   {movie.title}
                 </h1>
                 {movie.genre && movie.genre.length > 0 && (
@@ -549,7 +554,9 @@ function Details() {
                   <FaInfoCircle className="text-[#f47920] text-[10px]" />
                   Press ESC or click outside to close
                 </span>
-                <span className="hidden sm:inline">🎬 Official Trailer</span>
+                <span className="hidden sm:inline flex items-center gap-1.5">
+                  <FaFilm className="text-[#f47920] text-[10px]" /> Official Trailer
+                </span>
               </div>
             </motion.div>
           </motion.div>
@@ -573,7 +580,7 @@ function Details() {
             >
               <div className="flex items-center gap-2 mb-3">
                 <FaInfoCircle className="text-[#f47920] text-sm" />
-                <h2 className="text-sm sm:text-base font-bold text-white">
+                <h2 className="text-sm sm:text-base font-bold text-white font-display">
                   Synopsis
                 </h2>
               </div>
@@ -632,7 +639,7 @@ function Details() {
             >
               <div className="flex items-center gap-2 mb-4">
                 <FaUsers className="text-[#f47920] text-sm" />
-                <h2 className="text-sm sm:text-base font-bold text-white">
+                <h2 className="text-sm sm:text-base font-bold text-white font-display">
                   Cast
                 </h2>
                 <span className="text-[10px] text-gray-500 bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-0.5 rounded-full">
@@ -684,7 +691,7 @@ function Details() {
           >
             <div className="flex items-center gap-2 mb-5">
               <FaClock className="text-[#f47920] text-sm" />
-              <h2 className="text-sm sm:text-base font-bold text-white">
+              <h2 className="text-sm sm:text-base font-bold text-white font-display">
                 Showtimes
               </h2>
               <span className="text-[10px] text-gray-500 bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-0.5 rounded-full">
@@ -813,7 +820,7 @@ function Details() {
         <section className="container mx-auto px-4 sm:px-6 lg:px-10 max-w-6xl pb-16">
           <div className="bg-[#111111] rounded-2xl p-6 sm:p-8 border border-yellow-500/30 text-center">
             <FaExclamationTriangle className="text-yellow-400 text-3xl mx-auto mb-3" />
-            <p className="text-yellow-400 font-bold text-sm sm:text-base">
+            <p className="text-yellow-400 font-bold text-sm sm:text-base font-display">
               No Showtimes Available
             </p>
             <p className="text-gray-500 text-xs sm:text-sm mt-1.5">

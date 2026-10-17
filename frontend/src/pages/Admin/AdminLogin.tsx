@@ -15,6 +15,9 @@ import {
   FaCheckCircle,
 } from "react-icons/fa";
 
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 function AdminLogin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -48,7 +51,8 @@ function AdminLogin() {
     try {
       setLoading(true);
 
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      // ✅ FIXED: Using API_BASE_URL instead of localhost
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

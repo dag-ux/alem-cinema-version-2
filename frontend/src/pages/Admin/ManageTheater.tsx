@@ -7,6 +7,9 @@ import {
   FaInfoCircle, FaFilter, 
 } from "react-icons/fa";
 
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // ─── Types ──────────────────────────────────────────────
 interface TheaterPerformance {
   _id: string;
@@ -116,12 +119,10 @@ function ManageTheater() {
     try {
       setLoading(true);
       setError("");
-      const response = await fetch(
-        "http://localhost:5000/api/theater-performances",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      // ✅ FIXED: Using API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/api/theater-performances`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) throw new Error("Failed to fetch theater performances");
       const data = await response.json();
       setPerformances(data.performances || []);
@@ -169,9 +170,10 @@ function ManageTheater() {
         rating: parseFloat(formData.rating) || 0,
       };
 
+      // ✅ FIXED: Using API_BASE_URL
       const url = editing
-        ? `http://localhost:5000/api/theater-performances/${editing._id}`
-        : "http://localhost:5000/api/theater-performances";
+        ? `${API_BASE_URL}/api/theater-performances/${editing._id}`
+        : `${API_BASE_URL}/api/theater-performances`;
       const method = editing ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -209,8 +211,9 @@ function ManageTheater() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
+      // ✅ FIXED: Using API_BASE_URL
       const response = await fetch(
-        `http://localhost:5000/api/theater-performances/${deleteTarget._id}`,
+        `${API_BASE_URL}/api/theater-performances/${deleteTarget._id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -352,18 +355,21 @@ function ManageTheater() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
+        className="mb-8"
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#f47920] to-[#d4681a] flex items-center justify-center shadow-lg shadow-[#f47920]/30">
-                <FaTheaterMasks className="text-white text-lg" />
-              </div>
+            <div className="inline-flex items-center gap-2 bg-[#f47920]/10 border border-[#f47920]/30 rounded-full px-3 py-1 mb-3">
+              <FaTheaterMasks className="text-[#f47920] text-[10px]" />
+              <span className="text-[10px] tracking-[0.25em] uppercase text-[#f47920] font-bold">
+                Management
+              </span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold font-display text-white flex items-center gap-3">
               Manage Theater
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              Create, edit, and manage all theater performances
+              Create, edit, and manage all theater performances.
             </p>
           </div>
 
@@ -648,7 +654,7 @@ function ManageTheater() {
                     <div className="text-[10px] uppercase tracking-widest text-[#f47920] font-bold">
                       {editing ? "Edit Performance" : "New Performance"}
                     </div>
-                    <h2 className="text-lg font-bold text-white">
+                    <h2 className="text-lg font-bold text-white font-display">
                       {editing ? editing.title : "Create Theater Performance"}
                     </h2>
                   </div>
@@ -668,7 +674,7 @@ function ManageTheater() {
               >
                 {/* Title */}
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                     Title <span className="text-[#f47920]">*</span>
                   </label>
                   <input
@@ -685,7 +691,7 @@ function ManageTheater() {
 
                 {/* Description */}
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                     Description <span className="text-[#f47920]">*</span>
                   </label>
                   <textarea
@@ -703,7 +709,7 @@ function ManageTheater() {
                 {/* Genre + Duration */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                       Genre <span className="text-[#f47920]">*</span>
                     </label>
                     <input
@@ -718,7 +724,7 @@ function ManageTheater() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                       Duration (min) <span className="text-[#f47920]">*</span>
                     </label>
                     <input
@@ -737,7 +743,7 @@ function ManageTheater() {
                 {/* Language + Rating */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                       Language <span className="text-[#f47920]">*</span>
                     </label>
                     <input
@@ -752,7 +758,7 @@ function ManageTheater() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                       Rating (0–10)
                     </label>
                     <input
@@ -773,7 +779,7 @@ function ManageTheater() {
                 {/* Director + Theater */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                       Director <span className="text-[#f47920]">*</span>
                     </label>
                     <input
@@ -788,7 +794,7 @@ function ManageTheater() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                       Theater / Venue
                     </label>
                     <input
@@ -805,7 +811,7 @@ function ManageTheater() {
 
                 {/* Cast */}
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                     Cast <span className="text-[#f47920]">*</span>
                   </label>
                   <input
@@ -825,7 +831,7 @@ function ManageTheater() {
 
                 {/* Poster URL */}
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                     Poster URL
                   </label>
                   <div className="relative">
@@ -862,7 +868,7 @@ function ManageTheater() {
                 {/* Category + Status */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                       Category
                     </label>
                     <select
@@ -882,7 +888,7 @@ function ManageTheater() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
                       Status
                     </label>
                     <select
@@ -958,7 +964,7 @@ function ManageTheater() {
                 <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4">
                   <FaTrash className="text-red-400 text-xl" />
                 </div>
-                <h2 className="text-lg font-bold text-white mb-1">
+                <h2 className="text-lg font-bold text-white font-display mb-1">
                   Delete Performance?
                 </h2>
                 <p className="text-gray-400 text-sm mb-2">

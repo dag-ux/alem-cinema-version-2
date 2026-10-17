@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import {
   FaPlus,
   FaEdit,
@@ -8,9 +9,15 @@ import {
   FaTimes,
   FaCalendarAlt,
   FaChair,
-  FaFilm,
+  FaExclamationTriangle,
+  FaLayerGroup,
+  FaSave,
 } from "react-icons/fa";
 
+// ✅ ADDED: Environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+// ─── Types ──────────────────────────────────────────────
 interface Hall {
   _id: string;
   hallNumber: string;
@@ -31,6 +38,24 @@ interface Show {
   itemType: "MOVIE" | "THEATER";
 }
 
+// ─── Animations ─────────────────────────────────────────
+const fadeInUp: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const staggerContainer: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+  },
+};
+
 function ManageHalls() {
   const [halls, setHalls] = useState<Hall[]>([]);
   const [allShows, setAllShows] = useState<Show[]>([]);
@@ -39,6 +64,7 @@ function ManageHalls() {
   const [showForm, setShowForm] = useState(false);
   const [editingHall, setEditingHall] = useState<Hall | null>(null);
   const [formData, setFormData] = useState({ hallNumber: "", rows: "", columns: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   // ─── Seat Map Modal State ──────────────────────────────
   const [showSeatMap, setShowSeatMap] = useState(false);
@@ -54,7 +80,8 @@ function ManageHalls() {
   const fetchHalls = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/halls", {
+      // ✅ FIXED: Using API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/api/halls`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch halls");
@@ -71,7 +98,8 @@ function ManageHalls() {
   // ─── Fetch All Shows ──────────────────────────────────────
   const fetchAllShows = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/shows", {
+      // ✅ FIXED: Using API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/api/shows`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch shows");
@@ -94,15 +122,17 @@ function ManageHalls() {
   // ─── CRUD Handlers ────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const payload = {
         hallNumber: formData.hallNumber,
         rows: parseInt(formData.rows),
         columns: parseInt(formData.columns),
       };
+      // ✅ FIXED: Using API_BASE_URL
       const url = editingHall
-        ? `http://localhost:5000/api/halls/${editingHall._id}`
-        : "http://localhost:5000/api/halls";
+        ? `${API_BASE_URL}/api/halls/${editingHall._id}`
+        : `${API_BASE_URL}/api/halls`;
       const method = editingHall ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -121,13 +151,16 @@ function ManageHalls() {
       await fetchHalls();
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this hall?")) return;
+    if (!window.confirm("Are you sure you want to delete this hall?")) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/halls/${id}`, {
+      // ✅ FIXED: Using API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/api/halls/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -166,7 +199,8 @@ function ManageHalls() {
     }
     setSeatMapLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/bookings/show/${showId}`, {
+      // ✅ FIXED: Using API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/api/bookings/show/${showId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch booked seats");
@@ -184,39 +218,44 @@ function ManageHalls() {
     const rowLabels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
     return (
       <div className="flex flex-col items-center gap-1 mt-4">
-        <div className="text-center text-gray-400 text-sm font-bold tracking-[4px] mb-2 pb-1 border-b border-gray-600 w-full">
-          SCREEN
+        {/* Screen */}
+        <div className="w-3/4 mx-auto h-1.5 bg-gradient-to-r from-transparent via-[#f47920]/80 to-transparent rounded-full shadow-[0_0_15px_rgba(244,121,32,0.5)] mb-6" />
+        <p className="text-center text-gray-500 text-[9px] font-bold tracking-[6px] uppercase mb-4">Screen</p>
+
+        <div className="overflow-x-auto pb-4 w-full flex justify-center">
+          <div className="flex flex-col gap-1.5 min-w-max">
+            {rowLabels.slice(0, rows).map((row) => (
+              <div key={row} className="flex gap-1.5 items-center">
+                <span className="w-5 text-xs font-bold text-gray-500 text-right">{row}</span>
+                {Array.from({ length: columns }, (_, i) => {
+                  const seat = `${row}${i + 1}`;
+                  const isBooked = bookedSeats.includes(seat);
+                  return (
+                    <div
+                      key={seat}
+                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md text-[9px] flex items-center justify-center font-semibold transition-all ${
+                        isBooked
+                          ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                          : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"
+                      }`}
+                      title={seat}
+                    >
+                      {i + 1}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-1">
-          {rowLabels.slice(0, rows).map((row) => (
-            <div key={row} className="flex gap-1 items-center">
-              <span className="w-5 text-xs font-bold text-gray-500 text-right">{row}</span>
-              {Array.from({ length: columns }, (_, i) => {
-                const seat = `${row}${i + 1}`;
-                const isBooked = bookedSeats.includes(seat);
-                return (
-                  <div
-                    key={seat}
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded text-[10px] flex items-center justify-center font-semibold transition-all ${
-                      isBooked
-                        ? "bg-red-600/80 text-red-200 border border-red-500"
-                        : "bg-green-600/30 text-green-300 border border-green-500/40 hover:bg-green-600/50"
-                    }`}
-                    title={seat}
-                  >
-                    {i + 1}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-4 mt-3 text-xs">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 bg-green-600/40 border border-green-500 rounded"></span> Available
+
+        {/* Legend */}
+        <div className="flex gap-4 mt-4 text-[11px] text-gray-400">
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded"></span> Available
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 bg-red-600/80 border border-red-500 rounded"></span> Booked
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 bg-red-500/20 border border-red-500/30 rounded"></span> Booked
           </span>
         </div>
       </div>
@@ -226,247 +265,379 @@ function ManageHalls() {
   // ─── Loading State ─────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <FaSpinner className="animate-spin text-4xl text-[#f47920]" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+          className="w-14 h-14 border-2 border-[#2a2a2a] border-t-[#f47920] rounded-full"
+        />
+        <p className="text-gray-500 text-xs tracking-[0.3em] uppercase">
+          Loading Halls
+        </p>
       </div>
     );
   }
 
+  // ─── Error State ───────────────────────────────────────────
   if (error) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-500 text-xl">⚠️ {error}</p>
-        <button
-          onClick={fetchHalls}
-          className="mt-4 bg-[#f47920] hover:bg-[#d4681a] text-white px-6 py-2 rounded-lg transition"
-        >
-          Retry
-        </button>
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <div className="bg-[#111111] border border-red-500/30 rounded-3xl p-8 max-w-md text-center shadow-2xl">
+          <FaExclamationTriangle className="text-red-400 text-5xl mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-white font-display mb-2">
+            Unable to Load
+          </h2>
+          <p className="text-gray-400 text-sm mb-6">{error}</p>
+          <button
+            onClick={fetchHalls}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-[#f47920] to-[#d4681a] text-white px-6 py-3 rounded-full font-bold text-sm transition shadow-lg shadow-[#f47920]/25"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   // ─── Render ──────────────────────────────────────────────
   return (
-    <div>
-      {/* ─── Header ────────────────────────────────────────────── */}
-      <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-white">Manage Halls</h1>
-        <button
+    <div className="max-w-7xl mx-auto">
+      {/* ═══════════ HEADER ═══════════ */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8 flex flex-wrap items-center justify-between gap-4"
+      >
+        <div>
+          <div className="inline-flex items-center gap-2 bg-[#f47920]/10 border border-[#f47920]/30 rounded-full px-3 py-1 mb-3">
+            <FaLayerGroup className="text-[#f47920] text-[10px]" />
+            <span className="text-[10px] tracking-[0.25em] uppercase text-[#f47920] font-bold">
+              Management
+            </span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold font-display text-white">
+            Manage Halls
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Manage cinema screens, seating capacities, and view real-time occupancy.
+          </p>
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => {
             setEditingHall(null);
             resetForm();
-            setShowForm(!showForm);
+            setShowForm(true);
           }}
-          className="bg-[#f47920] hover:bg-[#d4681a] text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
+          className="bg-gradient-to-r from-[#f47920] to-[#d4681a] hover:from-[#ff9a5c] hover:to-[#f47920] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all duration-300 shadow-lg shadow-[#f47920]/25 font-bold text-sm"
         >
-          <FaPlus /> Add Hall
-        </button>
-      </div>
+          <FaPlus className="text-xs" /> Add Hall
+        </motion.button>
+      </motion.div>
 
-      {/* ─── Form ────────────────────────────────────────────── */}
-      {showForm && (
-        <div className="bg-gray-800/50 rounded-xl p-4 md:p-6 border border-gray-700 mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">
-            {editingHall ? "Edit Hall" : "Add New Hall"}
-          </h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input
-              type="text"
-              placeholder="Hall Number (e.g., Hall 1)"
-              value={formData.hallNumber}
-              onChange={(e) => setFormData({ ...formData, hallNumber: e.target.value })}
-              className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#f47920]"
-              required
-            />
-            <input
-              type="number"
-              placeholder="Rows"
-              value={formData.rows}
-              onChange={(e) => setFormData({ ...formData, rows: e.target.value })}
-              className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#f47920]"
-              required
-            />
-            <input
-              type="number"
-              placeholder="Columns"
-              value={formData.columns}
-              onChange={(e) => setFormData({ ...formData, columns: e.target.value })}
-              className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#f47920]"
-              required
-            />
-            <div className="md:col-span-3 flex gap-3">
-              <button type="submit" className="bg-[#f47920] hover:bg-[#d4681a] text-white px-6 py-2 rounded-lg transition">
-                {editingHall ? "Update" : "Create"}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowForm(false); setEditingHall(null); }}
-                className="bg-gray-600 hover:bg-gray-500 text-white px-6 py-2 rounded-lg transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+      {/* ═══════════ HALLS CARDS GRID ═══════════ */}
+      {halls.length === 0 ? (
+        <div className="bg-[#111111] border border-[#1f1f1f] rounded-3xl flex flex-col items-center justify-center py-20">
+          <FaChair className="text-4xl text-gray-700 mb-4" />
+          <p className="text-white text-base font-semibold">No halls found</p>
+          <p className="text-gray-500 text-sm mt-1">Create your first hall to get started.</p>
         </div>
-      )}
+      ) : (
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
+        >
+          {halls.map((hall) => {
+            const totalSeats = hall.rows * hall.columns;
+            const showsInHall = allShows.filter((s) => s.hallId._id === hall._id);
+            const showCount = showsInHall.length;
 
-      {/* ─── Halls Cards Grid ────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-        {halls.map((hall) => {
-          const totalSeats = hall.rows * hall.columns;
-          const showsInHall = allShows.filter((s) => s.hallId._id === hall._id);
-          const showCount = showsInHall.length;
-
-          return (
-            <div
-              key={hall._id}
-              className="bg-gray-800/50 rounded-xl border border-gray-700 p-5 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-[#f47920]/10 flex flex-col"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <FaChair className="text-[#f47920] text-xl" />
-                  <h3 className="text-lg font-bold text-white">{hall.hallNumber}</h3>
-                </div>
-                <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded-full">
-                  {hall.isActive ? "Active" : "Inactive"}
-                </span>
-              </div>
-
-              <div className="flex-1 space-y-2 text-sm text-gray-300">
-                <div className="flex justify-between border-b border-gray-700/50 pb-1">
-                  <span>Rows</span>
-                  <span className="font-semibold">{hall.rows}</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-700/50 pb-1">
-                  <span>Columns</span>
-                  <span className="font-semibold">{hall.columns}</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-700/50 pb-1">
-                  <span>Total Seats</span>
-                  <span className="font-semibold text-[#f47920]">{totalSeats}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Shows Scheduled</span>
-                  <span className="font-semibold text-blue-400">{showCount}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-700/50">
-                <button
-                  onClick={() => handleEdit(hall)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1"
-                >
-                  <FaEdit /> Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(hall._id)}
-                  className="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1"
-                >
-                  <FaTrash /> Delete
-                </button>
-                <button
-                  onClick={() => openSeatMap(hall)}
-                  className="flex-1 bg-green-600 hover:bg-green-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1"
-                >
-                  <FaEye /> Seats
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {halls.length === 0 && (
-        <p className="text-center text-gray-400 py-12">No halls found. Create your first hall!</p>
-      )}
-
-      {/* ─── Seat Map Modal ──────────────────────────────────── */}
-      {showSeatMap && selectedHall && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-700 sticky top-0 bg-gray-800 z-10">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <FaCalendarAlt className="text-[#f47920]" />
-                Seat Map – {selectedHall.hallNumber}
-              </h2>
-              <button
-                onClick={() => setShowSeatMap(false)}
-                className="text-gray-400 hover:text-white transition p-1"
+            return (
+              <motion.div
+                key={hall._id}
+                variants={fadeInUp}
+                className="bg-[#111111] rounded-2xl border border-[#1f1f1f] p-5 transition-all duration-300 hover:border-[#f47920]/40 hover:shadow-xl hover:shadow-black/40 flex flex-col group"
               >
-                <FaTimes size={24} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 md:p-6">
-              {hallShows.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No shows scheduled in this hall.</p>
-              ) : (
-                <>
-                  {/* Show Selector */}
-                  <div className="mb-4">
-                    <label className="block text-gray-300 text-sm font-medium mb-1">
-                      Select Show to View Occupancy
-                    </label>
-                    <select
-                      value={selectedShowId}
-                      onChange={(e) => {
-                        const showId = e.target.value;
-                        setSelectedShowId(showId);
-                        fetchBookedSeats(showId);
-                      }}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#f47920]"
-                    >
-                      <option value="">— Choose a show —</option>
-                      {hallShows.map((show) => {
-                        const title =
-                          show.movieId?.title ||
-                          show.theaterPerformanceId?.title ||
-                          "Unknown";
-                        const date = new Date(show.date).toLocaleDateString();
-                        return (
-                          <option key={show._id} value={show._id}>
-                            {title} – {date} ({show.startTime})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-
-                  {/* Seat Grid */}
-                  {seatMapLoading ? (
-                    <div className="flex justify-center items-center h-40">
-                      <FaSpinner className="animate-spin text-3xl text-[#f47920]" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-lg bg-[#f47920]/10 border border-[#f47920]/20 flex items-center justify-center">
+                      <FaChair className="text-[#f47920] text-sm" />
                     </div>
-                  ) : selectedShowId ? (
-                    <>
-                      {renderSeatGrid(
-                        selectedHall.rows,
-                        selectedHall.columns,
-                        bookedSeats
-                      )}
-                      <div className="mt-4 text-center text-sm text-gray-400">
-                        <span className="font-medium text-white">
-                          {bookedSeats.length}
-                        </span> seat{bookedSeats.length !== 1 ? "s" : ""} booked out of{" "}
-                        <span className="font-medium text-white">
-                          {selectedHall.rows * selectedHall.columns}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <p className="text-gray-400 text-center py-8">
-                      Select a show to see the seat map.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+                    <h3 className="text-lg font-bold text-white font-display">{hall.hallNumber}</h3>
+                  </div>
+                  <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border ${
+                    hall.isActive 
+                      ? "bg-green-500/10 text-green-400 border-green-500/20" 
+                      : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                  }`}>
+                    {hall.isActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
+
+                <div className="flex-1 space-y-2 text-sm text-gray-400 mb-5">
+                  <div className="flex justify-between border-b border-[#1f1f1f] pb-2">
+                    <span>Rows</span>
+                    <span className="font-semibold text-white">{hall.rows}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-[#1f1f1f] pb-2">
+                    <span>Columns</span>
+                    <span className="font-semibold text-white">{hall.columns}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-[#1f1f1f] pb-2">
+                    <span>Total Seats</span>
+                    <span className="font-semibold text-[#f47920]">{totalSeats}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Shows Scheduled</span>
+                    <span className="font-semibold text-white">{showCount}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-auto pt-4 border-t border-[#1f1f1f]">
+                  <button
+                    onClick={() => handleEdit(hall)}
+                    className="flex-1 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] hover:border-blue-500/50 text-blue-400 text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5"
+                  >
+                    <FaEdit className="text-[10px]" /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(hall._id)}
+                    className="flex-1 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] hover:border-red-500/50 text-red-400 text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5"
+                  >
+                    <FaTrash className="text-[10px]" /> Delete
+                  </button>
+                  <button
+                    onClick={() => openSeatMap(hall)}
+                    className="w-full mt-1 bg-gradient-to-r from-[#f47920] to-[#d4681a] hover:from-[#ff9a5c] hover:to-[#f47920] text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5 shadow-md shadow-[#f47920]/20"
+                  >
+                    <FaEye className="text-[10px]" /> View Seats
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       )}
+
+      {/* ═══════════ ADD / EDIT MODAL ═══════════ */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[80] p-4"
+            onClick={() => !submitting && setShowForm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 30 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-[#111111] rounded-3xl max-w-md w-full border border-[#2a2a2a] shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-5 border-b border-[#2a2a2a] bg-gradient-to-r from-[#f47920]/10 to-transparent">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#f47920] to-[#d4681a] flex items-center justify-center shadow-lg shadow-[#f47920]/30">
+                    {editingHall ? <FaEdit className="text-white text-sm" /> : <FaPlus className="text-white text-sm" />}
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-[#f47920] font-bold">
+                      {editingHall ? "Edit Hall" : "New Hall"}
+                    </div>
+                    <h2 className="text-lg font-bold text-white font-display">
+                      {editingHall ? editingHall.hallNumber : "Create a Hall"}
+                    </h2>
+                  </div>
+                </div>
+                <button
+                  onClick={() => !submitting && setShowForm(false)}
+                  className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-gray-400 hover:text-white transition"
+                >
+                  <FaTimes className="text-xs" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
+                    Hall Name / Number <span className="text-[#f47920]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., Hall 1, VIP Hall"
+                    value={formData.hallNumber}
+                    onChange={(e) => setFormData({ ...formData, hallNumber: e.target.value })}
+                    className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#f47920]/60 transition"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
+                      Rows <span className="text-[#f47920]">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      placeholder="e.g., 10"
+                      value={formData.rows}
+                      onChange={(e) => setFormData({ ...formData, rows: e.target.value })}
+                      className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#f47920]/60 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-1.5 font-semibold">
+                      Columns <span className="text-[#f47920]">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      placeholder="e.g., 12"
+                      value={formData.columns}
+                      onChange={(e) => setFormData({ ...formData, columns: e.target.value })}
+                      className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#f47920]/60 transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-[#2a2a2a] mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    disabled={submitting}
+                    className="flex-1 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] text-white font-bold py-3 rounded-xl transition text-sm disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-gradient-to-r from-[#f47920] to-[#d4681a] hover:from-[#ff9a5c] hover:to-[#f47920] text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-[#f47920]/25 text-sm disabled:opacity-70"
+                  >
+                    {submitting ? (
+                      <><FaSpinner className="animate-spin" /> Saving…</>
+                    ) : (
+                      <><FaSave /> {editingHall ? "Update" : "Create"}</>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════ SEAT MAP MODAL ═══════════ */}
+      <AnimatePresence>
+        {showSeatMap && selectedHall && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+            onClick={() => setShowSeatMap(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 30 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-[#111111] rounded-3xl border border-[#2a2a2a] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 border-b border-[#2a2a2a] bg-gradient-to-r from-[#f47920]/10 to-transparent shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#f47920]/10 border border-[#f47920]/30 flex items-center justify-center">
+                    <FaCalendarAlt className="text-[#f47920]" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-[#f47920] font-bold">
+                      Occupancy Map
+                    </div>
+                    <h2 className="text-lg font-bold text-white font-display">
+                      {selectedHall.hallNumber}
+                    </h2>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSeatMap(false)}
+                  className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-gray-400 hover:text-white transition"
+                >
+                  <FaTimes className="text-xs" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 sm:p-6 overflow-y-auto">
+                {hallShows.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FaCalendarAlt className="text-4xl text-gray-700 mx-auto mb-3" />
+                    <p className="text-gray-400 text-sm">No shows scheduled in this hall yet.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Show Selector */}
+                    <div className="mb-6">
+                      <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 font-semibold">
+                        Select Show to View Occupancy
+                      </label>
+                      <select
+                        value={selectedShowId}
+                        onChange={(e) => {
+                          const showId = e.target.value;
+                          setSelectedShowId(showId);
+                          fetchBookedSeats(showId);
+                        }}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#f47920]/60 transition appearance-none"
+                      >
+                        <option value="">— Choose a show —</option>
+                        {hallShows.map((show) => {
+                          const title = show.movieId?.title || show.theaterPerformanceId?.title || "Unknown";
+                          const date = new Date(show.date).toLocaleDateString();
+                          return (
+                            <option key={show._id} value={show._id}>
+                              {title} – {date} ({show.startTime})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    {/* Seat Grid */}
+                    {seatMapLoading ? (
+                      <div className="flex justify-center items-center h-40">
+                        <FaSpinner className="animate-spin text-3xl text-[#f47920]" />
+                      </div>
+                    ) : selectedShowId ? (
+                      <div className="bg-[#0a0a0a] rounded-2xl p-6 border border-[#1f1f1f]">
+                        {renderSeatGrid(selectedHall.rows, selectedHall.columns, bookedSeats)}
+                        <div className="mt-6 pt-4 border-t border-[#1f1f1f] text-center text-xs text-gray-400">
+                          <span className="font-bold text-white">{bookedSeats.length}</span> seat{bookedSeats.length !== 1 ? "s" : ""} booked out of{" "}
+                          <span className="font-bold text-white">{selectedHall.rows * selectedHall.columns}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500 text-sm">Select a show above to see the seat map.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { motion, Variants } from "framer-motion";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import {
-  FaFilm, FaStar, FaMapMarkerAlt, FaArrowRight, FaUsers,
+  FaFilm, FaStar, FaArrowRight, FaUsers,
   FaTicketAlt, FaCouch, FaHistory, FaHeart, FaAward,
   FaQuoteRight, FaCheckCircle, FaPlay,
 } from "react-icons/fa";
