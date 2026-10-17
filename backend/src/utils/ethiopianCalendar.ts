@@ -59,3 +59,21 @@ export function isEthiopianDateTodayOrFuture(ethDateStr: string): boolean {
 export function hasEthiopianDatePassed(ethDateStr: string): boolean {
   return !isEthiopianDateTodayOrFuture(ethDateStr);
 }
+
+/**
+ * Parse Ethiopian date string "DD/MM/YYYY" into day, month, and year
+ * (Added to fix the missing export error in booking.routes.ts)
+ */
+export function parseEthiopianDate(dateStr: string): { day: number; month: number; year: number } | null {
+  if (!dateStr) return null;
+  const parts = dateStr.split("/");
+  if (parts.length !== 3) return null;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+
+  return { day, month, year };
+}
