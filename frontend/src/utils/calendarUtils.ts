@@ -30,8 +30,11 @@ export function ethiopianToGregorianDate(ethDateStr: string): Date | null {
 
   // Exact Julian Day Number (JDN) formula
   const jdn = 1723856 + 365 * year + Math.floor(year / 4) + 30 * month + day - 31;
-  const unixTimestamp = (jdn - 2440588) * 86400000;
   
+  // 2440587.5 is the Unix epoch (Jan 1, 1970 00:00 UTC)
+  // This maps exactly to 12:00 PM (noon) on the correct day, preventing timezone rollovers
+  const unixTimestamp = (jdn - 2440587.5) * 86400000;
+
   return new Date(unixTimestamp);
 }
 
@@ -49,7 +52,7 @@ export function formatGregorianDisplay(ethDateStr: string): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    timeZone: 'UTC' // Crucial to prevent timezone shift from moving the date backward
+    timeZone: 'UTC' // Crucial: keeps the date accurate regardless of local timezone
   });
 }
 
