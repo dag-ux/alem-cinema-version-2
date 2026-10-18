@@ -11,7 +11,7 @@ import {
 } from "react-icons/fa";
 import {
   parseEthiopianDate, formatEthiopianDisplay, formatGregorianDisplay,
-  compareEthiopianDates, getTodayEthiopian,
+  compareEthiopianDates,
   getWeekRangeFromShows,
 } from "../../utils/calendarUtils";
 
@@ -69,32 +69,31 @@ function parseEthiopianTimeTo24h(timeStr: string): { hours: number; minutes: num
   return { hours: hours24 % 24, minutes };
 }
 
+// ─── Helper: Accurate Timestamp Calculation ─────────────
+// Bypasses the buggy getTodayEthiopian() utility to prevent past shows from showing as "Live"
+function getShowTimestamp(ethDate: string, ethTime: string): number {
+  const parsed = parseEthiopianDate(ethDate);
+  if (!parsed) return 0;
+
+  // Ethiopian New Year (Meskerem 1, 2019) = Sep 11, 2026
+  // We use this base date to calculate the correct Gregorian timestamp
+  const baseDate = new Date(2026, 8, 11); 
+  const daysToAdd = (parsed.month - 1) * 30 + parsed.day - 1;
+  
+  const showDate = new Date(baseDate.getTime() + daysToAdd * 86400000);
+  
+  const time = parseEthiopianTimeTo24h(ethTime);
+  if (time) {
+    showDate.setHours(time.hours, time.minutes, 0, 0);
+  }
+  
+  return showDate.getTime();
+}
+
 // ─── Helper: Has the show already started? ─
 function hasShowStarted(show: Show): boolean {
-  const parsed = parseEthiopianDate(show.date);
-  if (!parsed) return true;
-
-  const today = getTodayEthiopian();
-
-  // Compare dates strictly
-  if (parsed.year < today.year) return true;
-  if (parsed.year > today.year) return false;
-  
-  if (parsed.month < today.month) return true;
-  if (parsed.month > today.month) return false;
-  
-  if (parsed.day < today.day) return true;
-  if (parsed.day > today.day) return false;
-
-  // Same day -> compare times
-  const time = parseEthiopianTimeTo24h(show.startTime);
-  if (!time) return true;
-
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const showMinutes = time.hours * 60 + time.minutes;
-
-  return currentMinutes >= showMinutes;
+  const showTime = getShowTimestamp(show.date, show.startTime);
+  return showTime < Date.now();
 }
 
 // ─── Get enriched movies ─────────────
@@ -124,9 +123,8 @@ function getEnrichedMovies(movies: Movie[], shows: Show[]): EnrichedMovie[] {
         isEnded: upcomingShows.length === 0 && allShows.length > 0,
       };
     })
-    .filter((m) => m.allShows.length > 0) // Keep movies that have shows (past or present)
+    .filter((m) => m.allShows.length > 0)
     .sort((a, b) => {
-      // Sort ended movies to the end
       if (a.isEnded !== b.isEnded) return a.isEnded ? 1 : -1;
       if (a.earliestShow && b.earliestShow) {
         return compareEthiopianDates(a.earliestShow.date, b.earliestShow.date);
@@ -522,10 +520,7 @@ function Home() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 md:gap-6">
             {displayMovies.slice(0, 10).map((movie, idx) => {
-              // Determine if the movie is ended (no upcoming shows)
               const isEnded = movie.isEnded || !movie.earliestShow;
-              
-              // If ended, show the latest past show date, otherwise the earliest upcoming
               const displayShow = movie.earliestShow || movie.allShows[movie.allShows.length - 1];
 
               return (
