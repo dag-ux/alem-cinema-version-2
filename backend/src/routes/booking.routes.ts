@@ -6,7 +6,6 @@ import jwt from "jsonwebtoken";
 import {
   ethiopianToGregorianDate,
   isEthiopianDateTodayOrFuture,
-  parseEthiopianDate,
 } from "../utils/ethiopianCalendar";
 
 const router = Router();
@@ -37,7 +36,9 @@ router.get("/show/:showId", async (req: Request, res: Response) => {
 // ─── 2. Get bookings by email (for guests) ───
 router.get("/email/:email", async (req: Request, res: Response) => {
   try {
-    const { email } = req.params;
+    // ✅ FIXED: Force string type to prevent TS2339 error
+    const email = String(req.params.email);
+    
     const bookings = await Booking.find({
       "customerInfo.email": email.toLowerCase(),
       status: "CONFIRMED",
@@ -268,9 +269,10 @@ router.post("/", async (req: Request, res: Response) => {
       }
 
       bookingData.customerInfo = {
-        fullName: customerInfo.fullName.trim(),
-        email: customerInfo.email.toLowerCase().trim(),
-        phone: customerInfo.phone.trim(),
+        fullName: String(customerInfo.fullName).trim(),
+        // ✅ FIXED: Force string type here too to prevent future TS errors
+        email: String(customerInfo.email).toLowerCase().trim(),
+        phone: String(customerInfo.phone).trim(),
       };
       console.log(`📝 Guest booking for: ${customerInfo.fullName}`);
     } else {
