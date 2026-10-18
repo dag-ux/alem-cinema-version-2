@@ -5,9 +5,6 @@ export const ETHIOPIAN_MONTHS = [
   'መጋቢት', 'ሚያዝያ', 'ግንቦት', 'ሰኔ', 'ሐምሌ', 'ነሀሴ', 'ጳጉሜ'
 ];
 
-const isGregorianLeap = (y: number) =>
-  (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
-
 /**
  * Convert Ethiopian date string "DD/MM/YYYY" → Gregorian Date object
  */
@@ -22,18 +19,16 @@ export function ethiopianToGregorianDate(ethDateStr: string): Date | null {
 
   if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
 
-  // Ethiopian year + 7 gives approximate Gregorian year
-  const gregYear = year + 7;
-  const newYearDay = isGregorianLeap(gregYear) ? 11 : 12;
-  const newYear = new Date(gregYear, 8, newYearDay); // September 11 or 12
+  // Calculate Julian Day Number (JDN) for the Ethiopian date
+  // This formula is perfectly accurate and handles leap years automatically
+  const jdn = 1723856 + 365 * year + Math.floor(year / 4) + 30 * month + day - 31;
 
-  const totalDays = (month - 1) * 30 + (day - 1);
-  const result = new Date(newYear);
-  result.setDate(result.getDate() + totalDays);
+  // Convert JDN to Gregorian date
+  // Unix epoch (Jan 1, 1970) has JDN 2440588
+  const unixTimestamp = (jdn - 2440588) * 86400000;
+  const gregDate = new Date(unixTimestamp);
 
-  // Set to end of day so today's shows remain bookable
-  result.setHours(23, 59, 59, 999);
-  return result;
+  return gregDate;
 }
 
 /**
@@ -62,7 +57,6 @@ export function hasEthiopianDatePassed(ethDateStr: string): boolean {
 
 /**
  * Parse Ethiopian date string "DD/MM/YYYY" into day, month, and year
- * (Added to fix the missing export error in booking.routes.ts)
  */
 export function parseEthiopianDate(dateStr: string): { day: number; month: number; year: number } | null {
   if (!dateStr) return null;
