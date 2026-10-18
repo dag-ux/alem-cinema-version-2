@@ -32,10 +32,19 @@ export function ethiopianToGregorianDate(ethDateStr: string): Date | null {
   const jdn = 1723856 + 365 * year + Math.floor(year / 4) + 30 * month + day - 31;
   
   // 2440587.5 is the Unix epoch (Jan 1, 1970 00:00 UTC)
-  // This maps exactly to 12:00 PM (noon) on the correct day, preventing timezone rollovers
   const unixTimestamp = (jdn - 2440587.5) * 86400000;
 
   return new Date(unixTimestamp);
+}
+
+export function gregorianToEthiopianDate(date: Date): string {
+  const jdn = Math.floor(date.getTime() / 86400000) + 2440588;
+  const r = (jdn - 1723856) % 1461;
+  const n = (r % 365) + 365 * Math.floor(r / 1460);
+  const year = 4 * Math.floor((jdn - 1723856) / 1461) + Math.floor(r / 365) - Math.floor(r / 1460);
+  const month = Math.floor(n / 30) + 1;
+  const day = (n % 30) + 1;
+  return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
 }
 
 export function formatEthiopianDisplay(ethDateStr: string): string {
@@ -52,7 +61,7 @@ export function formatGregorianDisplay(ethDateStr: string): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    timeZone: 'UTC' // Crucial: keeps the date accurate regardless of local timezone
+    timeZone: 'UTC'
   });
 }
 
@@ -77,6 +86,54 @@ export function getTodayEthiopian(): { day: number; month: number; year: number 
   const day = (n % 30) + 1;
 
   return { day, month, year };
+}
+
+export function isTodayOrFuture(ethDateStr: string): boolean {
+  const p = parseEthiopianDate(ethDateStr);
+  if (!p) return false;
+  const today = getTodayEthiopian();
+  
+  if (p.year > today.year) return true;
+  if (p.year < today.year) return false;
+  
+  if (p.month > today.month) return true;
+  if (p.month < today.month) return false;
+  
+  return p.day >= today.day;
+}
+
+// ✅ FIXED: Now returns an array of objects and accepts an optional start date
+export function getWeekFromFriday(startDateStr?: string): { dayIndex: number; dayName: string; date: string }[] {
+  let baseDate = new Date();
+  
+  if (startDateStr) {
+    if (startDateStr.includes('/')) {
+      const gDate = ethiopianToGregorianDate(startDateStr);
+      if (gDate) baseDate = gDate;
+    } else {
+      baseDate = new Date(startDateStr);
+    }
+  }
+
+  // Find the most recent Friday
+  const dayOfWeek = baseDate.getDay(); // 0=Sun, 5=Fri, 6=Sat
+  const diff = (dayOfWeek + 2) % 7; // 0 -> 2 (go back to Fri), 5 -> 0, 6 -> 1
+  const friday = new Date(baseDate);
+  friday.setDate(baseDate.getDate() - diff);
+
+  const weekDays = [];
+  const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(friday);
+    d.setDate(friday.getDate() + i);
+    weekDays.push({
+      dayIndex: d.getDay(),
+      dayName: dayNames[d.getDay()],
+      date: gregorianToEthiopianDate(d)
+    });
+  }
+  return weekDays;
 }
 
 export function getWeekRangeFromShows(dates: string[]): string {
