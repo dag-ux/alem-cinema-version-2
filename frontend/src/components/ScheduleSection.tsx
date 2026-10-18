@@ -1,7 +1,6 @@
-import React from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { FaCalendarAlt, FaClock, FaTicketAlt } from "react-icons/fa";
+import { motion, Variants } from "framer-motion";
+import { FaClock, FaTicketAlt } from "react-icons/fa";
 
 interface Show {
   _id: string;
@@ -19,12 +18,17 @@ interface ScheduleSectionProps {
   shows: Show[];
 }
 
-const fadeInUp = {
+// ✅ FIXED: Added 'Variants' type and fixed ease array for TS
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } 
+  },
 };
 
-const staggerContainer = {
+const staggerContainer: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -43,13 +47,7 @@ const isSameDay = (date1: Date, date2: Date): boolean => {
   );
 };
 
-const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-};
+// ✅ FIXED: Removed unused 'formatDate' function
 
 const formatDateLong = (date: Date): string => {
   return date.toLocaleDateString('en-US', {
@@ -89,7 +87,7 @@ function ScheduleSection({ shows }: ScheduleSectionProps) {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
             <span className="text-2xl md:text-3xl">🎬</span>
-            <h2 className="text-2xl md:text-3xl font-bold text-white tracking-wider">
+            <h2 className="text-2xl md:text-3xl font-bold text-white tracking-wider font-display">
               CINEMA SCHEDULE
             </h2>
           </div>

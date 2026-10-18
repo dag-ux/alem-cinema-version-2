@@ -99,7 +99,6 @@ function ethiopianToString(year: number, month: number, day: number) {
 // ─── Main Component ──────────────────────────────────────────
 const ScheduleGrid: React.FC<ScheduleGridProps> = ({ shows, days = 7 }) => {
   const today = getTodayEthiopian();
-  const todayStr = ethiopianToString(today.year, today.month, today.day);
 
   const dateRange = useMemo(() => {
     const dates = [];

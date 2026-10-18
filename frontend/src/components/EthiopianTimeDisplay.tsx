@@ -1,5 +1,4 @@
 import React from 'react';
-import { EthiopianPeriod, getPeriodAmharic } from '../utils/timeUtils';
 
 interface EthiopianTimeDisplayProps {
   time: string; // Ethiopian time string like "2:00 ጠዋት"
