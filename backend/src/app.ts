@@ -16,22 +16,28 @@ import testRoutes from "./routes/test.routes";
 const app = express();
 
 // ─── Middleware ──────────────────────────────────────────────
-// CORS (Updated to accept localhost AND your future Vercel deployment)
+// CORS
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
 ];
 
+// ✅ FIX: Clean the URL (remove trailing slash if it exists) and add it to the list
 if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
+  const cleanUrl = process.env.FRONTEND_URL.replace(/\/$/, "");
+  allowedOrigins.push(cleanUrl);
 }
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
+    
+    // ✅ FIX: Added logging to help debug CORS issues on Render
     if (allowedOrigins.indexOf(origin) === -1) {
+      console.log(`❌ CORS Blocked: ${origin}`);
+      console.log(`Allowed origins are:`, allowedOrigins);
       return callback(new Error("CORS policy does not allow access from this origin"), false);
     }
     return callback(null, true);
